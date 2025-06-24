@@ -11,25 +11,12 @@ use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\EmailController;
-
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Rota principal para a página de apresentação (welcome).
-|
-*/
+use App\Http\Controllers\ImportController;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-/*
-|--------------------------------------------------------------------------
-| Rotas Protegidas (Exigem Autenticação)
-|--------------------------------------------------------------------------
-*/
 Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -38,7 +25,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
-    // Módulos principais
     Route::get('/apontamentos', [ApontamentoController::class, 'index'])->name('apontamentos.index');
     Route::post('/apontamentos', [ApontamentoController::class, 'storeOrUpdate'])->name('apontamentos.storeOrUpdate');
     Route::get('/api/agendas', [ApontamentoController::class, 'getAgendasAsEvents'])->name('api.agendas');
@@ -46,9 +32,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');
     Route::post('/relatorios', [RelatorioController::class, 'gerar'])->name('relatorios.gerar');
     
+    Route::get('agendas/alocacao', [AgendaController::class, 'alocacao'])->name('agendas.alocacao');
     Route::resource('agendas', AgendaController::class);
 
-    // Rotas para Admin e TechLead
     Route::middleware('role:admin,techlead')->group(function () {
         Route::resource('consultores', ConsultorController::class)
              ->parameters(['consultores' => 'consultor'])
@@ -58,18 +44,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/enviar-agendas', [EmailController::class, 'send'])->name('email.agendas.send');
     });
 
-    // Rotas exclusivas para Admin
     Route::middleware('role:admin')->group(function () {
         Route::resource('empresas', EmpresaParceiraController::class);
         Route::resource('techleads', TechLeadController::class);
         Route::resource('projetos', ProjetoController::class);
         Route::delete('consultores/{consultor}', [ConsultorController::class, 'destroy'])->name('consultores.destroy');
+        
+        Route::get('/importar', [ImportController::class, 'create'])->name('imports.create');
+        Route::post('/importar/upload', [ImportController::class, 'upload'])->name('imports.upload');
+        Route::get('/importar/mapeamento', [ImportController::class, 'mapping'])->name('imports.mapping');
+        Route::post('/importar/processar', [ImportController::class, 'process'])->name('imports.process');
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Rotas de Autenticação
-|--------------------------------------------------------------------------
-*/
 require __DIR__.'/auth.php';

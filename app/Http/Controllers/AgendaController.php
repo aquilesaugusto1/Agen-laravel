@@ -13,6 +13,27 @@ class AgendaController extends Controller
 {
     use AuthorizesRequests;
 
+    public function alocacao(Request $request)
+    {
+        $this->authorize('viewAlocacao', Agenda::class);
+
+        $mes = $request->input('mes', date('m'));
+        $ano = $request->input('ano', date('Y'));
+
+        $consultores = Consultor::with([
+                'projetos.empresaParceira', 
+                'projetos.techLeads', 
+                'apontamentos' => function($query) use ($mes, $ano) {
+                    $query->whereYear('data_apontamento', $ano)->whereMonth('data_apontamento', $mes);
+                }
+            ])
+            ->where('status', 'Ativo')
+            ->orderBy('nome')
+            ->get();
+
+        return view('agendas.alocacao', compact('consultores', 'mes', 'ano'));
+    }
+
     public function index()
     {
         $this->authorize('viewAny', Agenda::class);

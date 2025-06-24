@@ -8,6 +8,11 @@ use Illuminate\Auth\Access\Response;
 
 class AgendaPolicy
 {
+    public function viewAlocacao(User $user): bool
+    {
+        return $user->funcao === 'admin' || $user->funcao === 'techlead';
+    }
+
     public function viewAny(User $user): bool
     {
         return true;

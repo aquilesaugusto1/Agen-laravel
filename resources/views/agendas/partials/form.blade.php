@@ -22,12 +22,12 @@
     </div>
 
     <div>
-        <label for="empresa_id" class="block font-medium text-sm text-gray-700">Empresa (Cliente)</label>
-        <select name="empresa_id" id="empresa_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-            <option value="">Selecione uma empresa</option>
-            @foreach ($empresas as $empresa)
-                <option value="{{ $empresa->id }}" {{ old('empresa_id', $agenda->empresa_id ?? '') == $empresa->id ? 'selected' : '' }}>
-                    {{ $empresa->nome_empresa }}
+        <label for="projeto_id" class="block font-medium text-sm text-gray-700">Projeto</label>
+        <select name="projeto_id" id="projeto_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+            <option value="">Selecione um projeto</option>
+            @foreach ($projetos as $projeto)
+                <option value="{{ $projeto->id }}" {{ old('projeto_id', $agenda->projeto_id ?? '') == $projeto->id ? 'selected' : '' }}>
+                    {{ $projeto->nome_projeto }} (Cliente: {{ $projeto->empresaParceira->nome_empresa }})
                 </option>
             @endforeach
         </select>

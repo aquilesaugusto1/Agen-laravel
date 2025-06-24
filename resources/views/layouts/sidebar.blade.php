@@ -19,8 +19,14 @@
             Relatórios
         </a>
 
-        @if(auth()->user()->funcao == 'admin')
+        @if(in_array(auth()->user()->funcao, ['admin', 'techlead']))
             <hr class="my-4 border-gray-600">
+             <a href="{{ route('email.agendas.create') }}" class="flex items-center px-6 py-2 mt-4 duration-200 border-l-4 {{ request()->routeIs('email.agendas.*') ? 'bg-gray-700 border-gray-100' : 'border-gray-800' }} hover:bg-gray-700">
+                Enviar Agendas
+            </a>
+        @endif
+
+        @if(auth()->user()->funcao == 'admin')
             <a href="{{ route('projetos.index') }}" class="flex items-center px-6 py-2 mt-4 duration-200 border-l-4 {{ request()->routeIs('projetos.*') ? 'bg-gray-700 border-gray-100' : 'border-gray-800' }} hover:bg-gray-700">
                 Projetos
             </a>
@@ -36,7 +42,6 @@
         @endif
         
         @if(auth()->user()->funcao == 'techlead')
-            <hr class="my-4 border-gray-600">
             <a href="{{ route('consultores.index') }}" class="flex items-center px-6 py-2 mt-4 duration-200 border-l-4 {{ request()->routeIs('consultores.*') ? 'bg-gray-700 border-gray-100' : 'border-gray-800' }} hover:bg-gray-700">
                 Consultores
             </a>

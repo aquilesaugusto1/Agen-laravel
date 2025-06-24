@@ -9,14 +9,12 @@ class Agenda extends Model
 {
     use HasFactory;
 
-    protected $table = 'agendas';
-
     protected $fillable = [
         'data_hora',
         'assunto',
         'status',
         'consultor_id',
-        'empresa_id',
+        'projeto_id',
     ];
 
     protected $casts = [
@@ -28,9 +26,9 @@ class Agenda extends Model
         return $this->belongsTo(Consultor::class);
     }
 
-    public function empresaParceira()
+    public function projeto()
     {
-        return $this->belongsTo(EmpresaParceira::class, 'empresa_id');
+        return $this->belongsTo(Projeto::class);
     }
 
     public function apontamento()

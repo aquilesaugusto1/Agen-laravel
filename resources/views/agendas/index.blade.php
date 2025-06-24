@@ -5,9 +5,11 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     Agendas
                 </h2>
-                <a href="{{ route('agendas.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                    Nova Agenda
-                </a>
+                @can('create', App\Models\Agenda::class)
+                    <a href="{{ route('agendas.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        Nova Agenda
+                    </a>
+                @endcan
             </div>
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
@@ -54,7 +56,11 @@
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('agendas.edit', $agenda) }}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
+                                        @can('update', $agenda)
+                                            <a href="{{ route('agendas.edit', $agenda) }}" class="text-indigo-600 hover:text-indigo-900">Editar</a>
+                                        @endcan
+                                        
+                                        @can('delete', $agenda)
                                         <form action="{{ route('agendas.destroy', $agenda) }}" method="POST" class="inline ml-4">
                                             @csrf
                                             @method('DELETE')
@@ -62,6 +68,7 @@
                                                 Remover
                                             </button>
                                         </form>
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

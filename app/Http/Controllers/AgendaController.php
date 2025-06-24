@@ -4,22 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Models\Agenda;
 use App\Models\Consultor;
-use App\Models\EmpresaParceira;
+use App\Models\Projeto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AgendaController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
+        $this->authorize('viewAny', Agenda::class);
+
         $user = Auth::user();
-        $agendasQuery = Agenda::with('consultor', 'empresaParceira')->latest();
+        $agendasQuery = Agenda::with('consultor', 'projeto.empresaParceira')->latest();
 
         if ($user->funcao === 'consultor') {
             $agendasQuery->where('consultor_id', $user->consultor->id);
-        } elseif ($user->funcao === 'techlead') {
-            $consultoresLideradosIds = $user->consultoresLiderados()->pluck('consultores.id');
-            $agendasQuery->whereIn('consultor_id', $consultoresLideradosIds);
         }
         
         $agendas = $agendasQuery->paginate(10);
@@ -29,60 +31,78 @@ class AgendaController extends Controller
 
     public function create()
     {
-        $empresas = EmpresaParceira::all();
-        $consultores = Consultor::where('status', 'Ativo')->get();
-        return view('agendas.create', compact('empresas', 'consultores'));
+        $this->authorize('create', Agenda::class);
+        $projetos = Projeto::with('empresaParceira')->orderBy('nome_projeto')->get();
+        
+        $user = Auth::user();
+        $consultores = ($user->funcao === 'admin') 
+            ? Consultor::where('status', 'Ativo')->orderBy('nome')->get()
+            : $user->consultoresLiderados()->where('status', 'Ativo')->orderBy('nome')->get();
+
+        return view('agendas.create', compact('projetos', 'consultores'));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
+        $this->authorize('create', Agenda::class);
+
+        $validated = $request->validate([
             'data_hora' => 'required|date',
             'assunto' => 'required|string|max:255',
             'status' => 'required|string|in:Agendada,Realizada,Cancelada',
             'consultor_id' => 'required|exists:consultores,id',
-            'empresa_id' => 'required|exists:empresas_parceiras,id',
+            'projeto_id' => 'required|exists:projetos,id',
         ]);
+        
+        $user = Auth::user();
+        if ($user->funcao === 'techlead' && !$user->consultoresLiderados()->where('consultores.id', $validated['consultor_id'])->exists()) {
+            return back()->withErrors(['consultor_id' => 'Você não tem permissão para criar agendas para este consultor.'])->withInput();
+        }
 
-        Agenda::create($request->all());
+        Agenda::create($validated);
 
-        return redirect()->route('agendas.index')
-                         ->with('success', 'Agenda criada com sucesso.');
-    }
-
-    public function show(Agenda $agenda)
-    {
-        return view('agendas.show', compact('agenda'));
+        return redirect()->route('agendas.index')->with('success', 'Agenda criada com sucesso.');
     }
 
     public function edit(Agenda $agenda)
     {
-        $empresas = EmpresaParceira::all();
-        $consultores = Consultor::where('status', 'Ativo')->get();
-        return view('agendas.edit', compact('agenda', 'empresas', 'consultores'));
+        $this->authorize('update', $agenda);
+        
+        $projetos = Projeto::with('empresaParceira')->orderBy('nome_projeto')->get();
+        $user = Auth::user();
+        $consultores = ($user->funcao === 'admin') 
+            ? Consultor::where('status', 'Ativo')->orderBy('nome')->get()
+            : $user->consultoresLiderados()->where('status', 'Ativo')->orderBy('nome')->get();
+
+        return view('agendas.edit', compact('agenda', 'projetos', 'consultores'));
     }
 
     public function update(Request $request, Agenda $agenda)
     {
-        $request->validate([
+        $this->authorize('update', $agenda);
+
+        $validated = $request->validate([
             'data_hora' => 'required|date',
             'assunto' => 'required|string|max:255',
             'status' => 'required|string|in:Agendada,Realizada,Cancelada',
             'consultor_id' => 'required|exists:consultores,id',
-            'empresa_id' => 'required|exists:empresas_parceiras,id',
+            'projeto_id' => 'required|exists:projetos,id',
         ]);
 
-        $agenda->update($request->all());
+        $user = Auth::user();
+        if ($user->funcao === 'techlead' && !$user->consultoresLiderados()->where('consultores.id', $validated['consultor_id'])->exists()) {
+            return back()->withErrors(['consultor_id' => 'Você não tem permissão para atribuir agendas a este consultor.'])->withInput();
+        }
 
-        return redirect()->route('agendas.index')
-                         ->with('success', 'Agenda atualizada com sucesso.');
+        $agenda->update($validated);
+
+        return redirect()->route('agendas.index')->with('success', 'Agenda atualizada com sucesso.');
     }
 
     public function destroy(Agenda $agenda)
     {
+        $this->authorize('delete', $agenda);
         $agenda->delete();
-
-        return redirect()->route('agendas.index')
-                         ->with('success', 'Agenda removida com sucesso.');
+        return redirect()->route('agendas.index')->with('success', 'Agenda removida com sucesso.');
     }
 }

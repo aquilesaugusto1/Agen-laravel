@@ -9,9 +9,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ApontamentoController extends Controller
 {
+    use AuthorizesRequests;
+
     public function index()
     {
         return view('apontamentos.index');
@@ -22,7 +25,7 @@ class ApontamentoController extends Controller
         $start = Carbon::parse($request->start)->toDateTimeString();
         $end = Carbon::parse($request->end)->toDateTimeString();
 
-        $query = Agenda::with('consultor', 'empresaParceira', 'apontamento')
+        $query = Agenda::with('consultor', 'projeto.empresaParceira', 'apontamento')
                        ->whereBetween('data_hora', [$start, $end]);
 
         $user = Auth::user();
@@ -51,17 +54,16 @@ class ApontamentoController extends Controller
 
             return [
                 'id' => $agenda->id,
-                'title' => $agenda->empresaParceira->nome_empresa,
+                'title' => $agenda->projeto->empresaParceira->nome_empresa,
                 'start' => $agenda->data_hora,
                 'color' => $color,
                 'extendedProps' => [
-                    'apontamento_id' => $hasApontamento ? $agenda->apontamento->id : null,
                     'consultor' => $agenda->consultor->nome,
-                    'assunto' => $agenda->assunto,
+                    'assunto' => $agenda->assunto . ' (Projeto: ' . $agenda->projeto->nome_projeto . ')',
+                    'faturado' => $isFaturado,
                     'hora_inicio' => $hasApontamento ? Carbon::parse($agenda->apontamento->hora_inicio)->format('H:i') : '',
                     'hora_fim' => $hasApontamento ? Carbon::parse($agenda->apontamento->hora_fim)->format('H:i') : '',
                     'descricao' => $hasApontamento ? $agenda->apontamento->descricao : '',
-                    'faturado' => $isFaturado,
                 ]
             ];
         });
@@ -79,12 +81,9 @@ class ApontamentoController extends Controller
             'faturar' => 'nullable|boolean',
         ]);
 
-        $user = Auth::user();
-        $agenda = Agenda::with('empresaParceira')->findOrFail($validated['agenda_id']);
+        $agenda = Agenda::with('projeto.empresaParceira')->findOrFail($validated['agenda_id']);
         
-        if ($user->funcao === 'consultor' && $agenda->consultor_id !== $user->consultor->id) {
-            return response()->json(['message' => 'Você não tem permissão para apontar horas nesta agenda.'], 403);
-        }
+        $this->authorize('update', $agenda);
 
         $apontamento = Apontamento::firstOrNew(['agenda_id' => $agenda->id]);
 
@@ -97,24 +96,23 @@ class ApontamentoController extends Controller
 
         try {
             DB::transaction(function () use ($apontamento, $agenda, $validated, $horasGastas, $faturarAgora, $jaEraFaturado) {
-                
                 if ($jaEraFaturado) {
                     throw new \Exception('Apontamento já faturado não pode ser alterado.');
                 }
-
-                $apontamento->consultor_id = $agenda->consultor_id;
-                $apontamento->data_apontamento = $agenda->data_hora->format('Y-m-d');
-                $apontamento->hora_inicio = $validated['hora_inicio'];
-                $apontamento->hora_fim = $validated['hora_fim'];
-                $apontamento->horas_gastas = $horasGastas;
-                $apontamento->descricao = $validated['descricao'];
-                $apontamento->faturado = $faturarAgora;
                 
-                $apontamento->save();
-
+                $apontamento->fill([
+                    'consultor_id' => $agenda->consultor_id,
+                    'data_apontamento' => $agenda->data_hora->format('Y-m-d'),
+                    'hora_inicio' => $validated['hora_inicio'],
+                    'hora_fim' => $validated['hora_fim'],
+                    'horas_gastas' => $horasGastas,
+                    'descricao' => $validated['descricao'],
+                    'faturado' => $faturarAgora
+                ])->save();
+                
                 if ($faturarAgora) {
-                    EmpresaParceira::where('id', $agenda->empresa_parceira_id)
-                       ->update(['horas_contratadas' => DB::raw("horas_contratadas - $horasGastas")]);
+                    $empresa = $agenda->projeto->empresaParceira;
+                    $empresa->update(['horas_contratadas' => DB::raw("horas_contratadas - $horasGastas")]);
                 }
             });
         } catch (\Exception $e) {

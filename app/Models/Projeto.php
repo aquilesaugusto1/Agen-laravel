@@ -9,8 +9,6 @@ class Projeto extends Model
 {
     use HasFactory;
 
-    protected $table = 'projetos';
-
     protected $fillable = [
         'nome_projeto',
         'empresa_parceira_id',
@@ -30,5 +28,10 @@ class Projeto extends Model
     public function techLeads()
     {
         return $this->belongsToMany(User::class, 'projeto_tech_lead', 'projeto_id', 'tech_lead_id');
+    }
+
+    public function agendas()
+    {
+        return $this->hasMany(Agenda::class);
     }
 }

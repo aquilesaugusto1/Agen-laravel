@@ -10,6 +10,7 @@ use App\Http\Controllers\ApontamentoController;
 use App\Http\Controllers\RelatorioController;
 use App\Http\Controllers\ProjetoController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\EmailController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -29,13 +30,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');
     Route::post('/relatorios', [RelatorioController::class, 'gerar'])->name('relatorios.gerar');
+    
+    Route::resource('agendas', AgendaController::class);
 
     Route::middleware('role:admin,techlead')->group(function () {
         Route::resource('consultores', ConsultorController::class)
              ->parameters(['consultores' => 'consultor'])
              ->except(['destroy']);
-             
-        Route::resource('agendas', AgendaController::class);
+        
+        Route::get('/enviar-agendas', [EmailController::class, 'create'])->name('email.agendas.create');
+        Route::post('/enviar-agendas', [EmailController::class, 'send'])->name('email.agendas.send');
     });
 
     Route::middleware('role:admin')->group(function () {
